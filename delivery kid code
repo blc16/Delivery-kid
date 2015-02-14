@@ -1,0 +1,189 @@
+import pygame, random
+from pygame.locals import *
+
+pygame.init()
+screen = pygame.display.set_mode([700,500])
+pygame.display.set_caption("Delivery Kid")
+
+objspeed = [-2,0]
+fps=10
+
+def quitgame():
+    for event in pygame.event.get():
+        if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+            global state
+            state = 1
+            print "Thanks for Playing!"
+
+def AnimationImages(width, height, filename):
+    # images array will be filled with each frame of an animation
+    images = []
+    
+    fullImage = pygame.image.load(filename).convert()
+    fullImage.set_colorkey((255,255,255))
+    fullWidth, fullHeight = fullImage.get_size()
+    
+    for i in xrange(int(fullWidth/width)):
+        images.append(fullImage.subsurface((i*width, 0, width ,height)))
+        
+    return images
+
+class Image(pygame.sprite.Sprite):
+    def __init__(self, color, filename, location):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load(filename).convert()
+        self.image.set_colorkey(color)
+        #self.image = pygame.transform.scale(self.image, (350,300))
+        self.rect = self.image.get_rect()
+        # position the image
+        self.rect.x = location[0]
+        self.rect.y = location[1]
+        
+    def GetCollision(self, block2):
+        global x
+        global y
+        
+        if pygame.sprite.collide_rect(self, block2):
+            # position horizontally within the screen, accounting for the width of the image
+            x = random.randrange(700 - self.rect.width)
+            # position vertically within the screen, accounting for the height of the image
+            y = random.randrange(500 - self.rect.height)
+    def moveObj(self):
+        self.rect = self.rect.move(objspeed)
+        
+            
+class Animations(pygame.sprite.Sprite):
+    def __init__(self, width, height, filename, location):
+        
+        pygame.sprite.Sprite.__init__(self)
+        self.all_images = AnimationImages(width, height, filename)
+        
+       
+        # delay is time between animation frames
+        # last_update saves the time the animation was last updated
+        self.delay = 1000/fps
+        self.last_update = 0
+ 
+        # frame is the array location in images
+        self.frame = 0
+        self.location = location
+        
+        # sets the animations current image
+        self.image = self.all_images[self.frame]
+        #erases white background
+        self.image.set_colorkey((255,255,255))
+        
+        self.rect = self.image.get_rect()
+        self.rect.x = location[0]
+        self.rect.y = location[1]
+    
+        # variables saved in each animation type to be used elsewhere 
+        self.JumpCount = 0    
+        self.goingUp = 1
+        
+        
+    # This method updates the animation image
+    def updateAnimation (self, totalTime):
+        
+        # checks if enough time has passed to change the image
+        if totalTime - self.last_update > self.delay:
+            self.frame += 1
+            
+            # checks if the new image is greater than the number of images
+            # starts image cycle over if true
+            if self.frame >= len(self.all_images): 
+                self.frame = 0
+                
+            # updates current animation image
+            self.image = self.all_images[self.frame]
+            #erases white background
+            self.image.set_colorkey((255,255,255))
+            
+            # changes the last update time
+            self.last_update = totalTime
+        
+        #draws animation changes to the screen
+        screen.blit(self.image, self)
+        
+    def JumpAction (self): 
+        
+        max_height = 370
+        min_height = 400
+        clock =pygame.time.Clock()
+        
+        # Plays sound at the start of a jump
+        #if self.goingUp == 1 and self.location[1] == 400:
+            #jump_Sound.play()
+        
+        # If the player is going up and above the max height, move the player up
+        if self.goingUp == 1 and self.location[1] > max_height:
+            self.location[1] -= .1
+            
+            # If the player has reached the maximum height, start going down
+            if self.location[1] <= max_height:
+                self.goingUp = 0
+            return 1 
+        
+        # Move the player down if they are above the minimum height          
+        elif self.goingUp == 0 and self.location[1] < min_height:
+            self.location[1] += .1
+            return 1
+        
+        # Starts the jump animation
+        elif self.location >= min_height:
+            self.location[1] = 400
+            self.goingUp = 1
+            self.JumpCount += 1
+            return 0
+    
+    # Updates the image on the screen
+    def update(self):
+        
+        #erases white background
+        self.image.set_colorkey((255,255,255))
+        
+        self.rect = self.image.get_rect()        
+        self.rect.x = self.location[0]
+        self.rect.y = self.location[1]
+        screen.blit(self.image, self)
+    
+background = Image((1,1,1),"background.png",(0,0))   
+background.image = pygame.transform.scale(background.image, (5000,500)) 
+
+obstacle1 = Image((255,255,255),"rock.png",(1300,400))
+obstacle1.image = pygame.transform.scale(obstacle1.image, (100,100))    
+
+obstacle2 = Image((255,255,255),"cat.png",(2600,370))
+obstacle2.image = pygame.transform.scale(obstacle2.image, (100,120))  
+
+obstacle3 = Image((255,255,255),"bush.png",(3900,350))
+obstacle3.image = pygame.transform.scale(obstacle3.image, (150,150))  
+
+biker=Animations(203,148,'biker.png',[50,320]) 
+#erases white background
+biker.image.set_colorkey((255,255,255))  
+ 
+state = 0
+while state != 1:
+    
+    timer = pygame.time.get_ticks()
+    
+    background.moveObj()
+    obstacle1.moveObj()
+    obstacle2.moveObj()
+    obstacle3.moveObj()
+    
+    screen.blit(background.image,background)
+    screen.blit(obstacle1.image,obstacle1)
+    screen.blit(obstacle2.image,obstacle2)
+    screen.blit(obstacle3.image,obstacle3)
+    
+    biker.updateAnimation(timer)
+   
+    pygame.display.update() 
+    pygame.time.delay(3)
+    
+    quitgame()
+    
+    if background.rect.x == -4300:
+        state = 1
